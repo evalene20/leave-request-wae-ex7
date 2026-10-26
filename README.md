@@ -4,29 +4,19 @@ Employees apply for leave in a React portal, a Spring Boot API starts a **Camund
 and managers approve or reject from an inbox. Automated steps (validation, finalisation) run as
 Spring Boot job workers.
 
-```
-Browser ──HTTP──▶ React (Vite / Nginx) ──/api──▶ Spring Boot :8081 ──gRPC 26500 / REST 8080──▶ Camunda 8
-                                                      │
-                                                      └── JPA ──▶ H2 (local) / PostgreSQL (Docker)
-```
-
-The browser only talks to Spring Boot; React never calls Camunda directly.
 
 ## Repository layout
 
 ```
 leave-system/
-├── bpmn/                         leave-request.bpmn + leave-approval.form (edit these in Modeler)
+├── bpmn/                         leave-request.bpmn + leave-approval.form 
 ├── backend/                      Spring Boot 3.5 · Java 21
-│   └── src/main/resources/bpmn/  copy of the two files above (deployed on startup)
+│   └── src/main/resources/bpmn/  copy of the two files above 
 ├── frontend/                     React + TypeScript + Vite
 ├── camunda/docker-compose.yml    Camunda 8 only (for local development)
 ├── docker-compose.yml            Full stack: Camunda + PostgreSQL + backend + frontend
 └── .github/workflows/ci.yml      Build checks
 ```
-
-Edit the process and form in `bpmn/` with Camunda Desktop Modeler, then copy both files into
-`backend/src/main/resources/bpmn/` (the backend deploys that copy on startup). Keep the two copies identical.
 
 ## Workflow
 
@@ -94,20 +84,4 @@ Run the unit tests with `cd backend && mvn test`.
 
 Inspect instances and variables in Operate (http://localhost:8080/operate).
 
-## Troubleshooting
 
-- **Backend can't reach Camunda / 401** – check `CAMUNDA_GRPC_ADDRESS` / `CAMUNDA_REST_ADDRESS`, and that
-  `CAMUNDA_USERNAME` / `CAMUNDA_PASSWORD` match a Camunda user. Camunda only creates the initial user when
-  its database is empty; after changing the password, run `docker compose down -v` to start clean.
-- **Process not found** – process ID must be `leave-request`; check the backend log for the deployment.
-- **Job never runs** – worker types must be exactly `validate-leave` and `finalize-leave`.
-- **409 on approve** – the task isn't indexed yet; the UI retries for a few seconds.
-- **Version mismatch** – `camunda.version` in `backend/pom.xml` and `CAMUNDA_VERSION` in `.env` must be
-  the same 8.x minor line.
-
-## Security
-
-This is a learning MVP. **There is no authentication or authorisation**: anyone who can reach the API
-can act as a manager. Don't expose it publicly. Before real use add authentication and roles,
-move secrets to a secret store, use PostgreSQL with backups, and run Camunda with a supported
-production setup (secured, persistent storage).
