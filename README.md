@@ -5,7 +5,7 @@ and managers approve or reject from an inbox. Automated steps (validation, final
 Spring Boot job workers.
 
 
-## Repository layout
+### Folder Structure
 
 ```
 leave-system/
@@ -18,7 +18,7 @@ leave-system/
 └── .github/workflows/ci.yml      Build checks
 ```
 
-## Workflow
+### Workflow
 
 `Leave requested` → **validate-leave** (worker) → `Request valid?`
 - valid → **Manager approval** (user task, form `leave-approval`) → `Approved?`
@@ -29,7 +29,7 @@ leave-system/
 Business rules: weekdays only (Mon–Fri, no holiday calendar), 20 annual days by default, annual leave
 is deducted only on approval, and finalisation is idempotent so retried jobs can't deduct twice.
 
-## Run everything with Docker
+### Run everything with Docker
 
 ```bash
 cp .env.example .env        # then edit .env: set CAMUNDA_PASSWORD (and POSTGRES_PASSWORD)
@@ -44,7 +44,7 @@ docker compose up --build
 
 Camunda needs a minute to start; the backend waits for it and restarts itself if needed.
 
-## Run locally for development
+### Run locally for development
 
 Requires Java 21, Maven 3.9+, Node 20+, Docker.
 
@@ -63,25 +63,7 @@ cd frontend && npm install && npm run dev  # http://localhost:5173 (proxies /api
 
 Run the unit tests with `cd backend && mvn test`.
 
-## API
 
-| Method & path | Purpose |
-|---|---|
-| `POST /api/leaves` | Submit a request |
-| `GET /api/leaves?employeeEmail=` | List an employee's requests |
-| `GET /api/leaves/pending` | Requests awaiting manager approval |
-| `GET /api/leaves/balance?employeeEmail=` | `{ "remainingDays": n }` |
-| `POST /api/leaves/{id}/decision` | `{ "approved": bool, "comment": "..." }` → 204 |
 
-## Test scenarios
-
-1. **Approved** – 3 weekdays annual leave → approve → status `APPROVED`, balance 20 → 17.
-2. **Manager rejection** – reject with comment → `REJECTED`, balance unchanged.
-3. **Insufficient balance** – request more days than remain → rejected before manager approval.
-4. **Weekend only** – Sat–Sun → rejected (no working days).
-5. **Tasklist approval** – complete the task in Tasklist instead of the portal.
-6. **Invalid dates** – end before start via API → rejected, no deduction.
-
-Inspect instances and variables in Operate (http://localhost:8080/operate).
 
 
