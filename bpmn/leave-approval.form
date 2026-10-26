@@ -1,0 +1,30 @@
+{
+  "components": [
+    {
+      "text": "# Manager approval\nReview the leave request and record your decision.",
+      "type": "text",
+      "layout": { "row": "Row_0", "columns": null },
+      "id": "Field_header"
+    },
+    {
+      "label": "Approve this request",
+      "type": "checkbox",
+      "layout": { "row": "Row_1", "columns": null },
+      "id": "Field_approved",
+      "key": "approved"
+    },
+    {
+      "label": "Comment",
+      "type": "textarea",
+      "layout": { "row": "Row_2", "columns": null },
+      "id": "Field_comment",
+      "key": "managerComment"
+    }
+  ],
+  "type": "default",
+  "id": "leave-approval",
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.8.0",
+  "exporter": { "name": "Camunda Modeler", "version": "5.0.0" },
+  "schemaVersion": 16
+}

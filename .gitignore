@@ -1,0 +1,21 @@
+# secrets / local config
+.env
+*.local
+
+# backend
+backend/target/
+backend/data/
+*.mv.db
+*.trace.db
+*.log
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDEs / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

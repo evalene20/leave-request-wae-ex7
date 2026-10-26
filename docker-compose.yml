@@ -1,0 +1,94 @@
+# Full stack: Camunda 8 + PostgreSQL + Spring Boot + React (Nginx)
+#   cp .env.example .env   (REQUIRED: set CAMUNDA_PASSWORD)
+#   docker compose up --build
+# Open http://localhost:3000   |   Operate: http://localhost:8080/operate
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.19.0}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  camunda:
+    image: camunda/camunda:${CAMUNDA_VERSION:-8.8.9}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "8080:8080"     # REST API + Operate + Tasklist
+      - "26500:26500"   # gRPC
+    environment:
+      - CAMUNDA_DATA_SECONDARYSTORAGE_TYPE=elasticsearch
+      - CAMUNDA_DATA_SECONDARYSTORAGE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME=io.camunda.zeebe.exporter.ElasticsearchExporter
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL=http://elasticsearch:9200
+      # Create the admin user at startup; the backend logs in with the same credentials.
+      - CAMUNDA_SECURITY_INITIALIZATION_USERS_0_USERNAME=${CAMUNDA_USERNAME:-admin}
+      - CAMUNDA_SECURITY_INITIALIZATION_USERS_0_PASSWORD=${CAMUNDA_PASSWORD:?Set CAMUNDA_PASSWORD in .env}
+      - CAMUNDA_SECURITY_INITIALIZATION_USERS_0_NAME=Admin
+      - CAMUNDA_SECURITY_INITIALIZATION_USERS_0_EMAIL=admin@example.com
+      - CAMUNDA_SECURITY_INITIALIZATION_DEFAULTROLES_ADMIN_USERS_0=${CAMUNDA_USERNAME:-admin}
+    volumes:
+      - camunda-data:/usr/local/camunda/data
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c ':> /dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: leave
+      POSTGRES_USER: ${POSTGRES_USER:-leave}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-leave}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leave} -d leave"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      camunda:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_URL: jdbc:postgresql://postgres:5432/leave
+      DB_USER: ${POSTGRES_USER:-leave}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-leave}
+      CAMUNDA_GRPC_ADDRESS: http://camunda:26500
+      CAMUNDA_REST_ADDRESS: http://camunda:8080
+      CAMUNDA_USERNAME: ${CAMUNDA_USERNAME:-admin}
+      CAMUNDA_PASSWORD: ${CAMUNDA_PASSWORD:?Set CAMUNDA_PASSWORD in .env}
+    ports:
+      - "8081:8081"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  camunda-data:
+  elastic-data:
+  postgres-data:

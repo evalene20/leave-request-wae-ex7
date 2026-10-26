@@ -1,0 +1,43 @@
+# Camunda 8.8 only - for local development (Step 4), while Spring Boot and Vite
+# run on your machine:   cd camunda && docker compose up -d
+# On first start, open http://localhost:8080 and create the admin user; the backend
+# then logs in with it (set CAMUNDA_USERNAME / CAMUNDA_PASSWORD when starting it).
+# Camunda 8.8 stores data for Operate/Tasklist in Elasticsearch (its default secondary storage).
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.19.0}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  camunda:
+    image: camunda/camunda:${CAMUNDA_VERSION:-8.8.9}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "8080:8080"     # REST API + Operate + Tasklist
+      - "26500:26500"   # gRPC
+    environment:
+      - CAMUNDA_DATA_SECONDARYSTORAGE_TYPE=elasticsearch
+      - CAMUNDA_DATA_SECONDARYSTORAGE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_OPERATE_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CAMUNDA_TASKLIST_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME=io.camunda.zeebe.exporter.ElasticsearchExporter
+      - ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL=http://elasticsearch:9200
+    volumes:
+      - camunda-data:/usr/local/camunda/data
+
+volumes:
+  camunda-data:
+  elastic-data:

@@ -1,0 +1,9 @@
+# Activated with SPRING_PROFILES_ACTIVE=docker (see docker-compose.yml).
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres:5432/leave}
+    username: ${DB_USER:leave}
+    password: ${DB_PASSWORD:leave}
+  h2:
+    console:
+      enabled: false
